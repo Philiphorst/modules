@@ -14,7 +14,8 @@ California, 94041, USA.
 '''
 import scipy.io as sio
 
-mat_file_name = '/home/philip/work/Git_repositories/hctsa/Helper/GlobalFeatureComparison/test_data/separated_data/50words.mat'
+#mat_file_name = '/home/philip/work/Git_repositories/hctsa/Helper/GlobalFeatureComparison/test_data/separated_data/50words.mat'
+mat_file_name = '/home/bjm113/TimeSeries/top_features/op_importance/Beef.mat'
 
 def read_calc_times(mat_file_path):
     """ Read the average calculation times for each operation from a HCTSA_loc.mat file
@@ -107,4 +108,5 @@ def read_from_mat_file(mat_file_path,hctsa_struct_names,is_from_old_matlab = Fal
             retval = retval+(mat_file['TS_DataMat'],)
     return retval
 
-#print read_from_mat_file(mat_file_name,['Operations'])[0]['id']
+if __name__ == "__main__":
+    print read_from_mat_file(mat_file_name,['Operations'], is_from_old_matlab = True)[0]['id']
