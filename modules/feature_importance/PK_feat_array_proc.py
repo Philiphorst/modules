@@ -13,67 +13,52 @@ California, 94041, USA.
 ------------------------------------------------------------------------------
 
 '''
-
+import glob 
 import numpy as np
 import modules.misc.PK_matlab_IO as mIO
 import modules.misc.PK_helper as hlp
+import modules.feature_importance.PK_feature_quality as fq
 import scipy.spatial.distance as spdst
 import scipy.cluster.hierarchy as hierarchy
 
-# def cat_data_op_subset_old(file_paths,op_id_top,is_do_dict_only = False,is_from_old_matlab = False):
-#     """
-#     Concatenate the features where op_id is in op_id_top for all HCTSA_loc.m files pointed to by file_paths.
-#     Warning, this can take a while and the returned data matrix can be very large.
-#     
-#     \FIXME XXX This should probably be done by operation_name as here we rely on the same order of features in
-#                 all the files
-#     
-#     Parameters:
-#     -----------
-#     file_paths : list
-#         list of file paths pointing to the files containing the data
-#     op_id_top : list
-#         list of operation ids wanted in the concatenated data array
-#     is_do_dict_only : bool
-#         True if only the ind_dict is calculated    
-#     is_from_old_matlab : bool
-#         If the HCTSA_loc.mat files are saved from an older version of the comp engine. The order of entries is different.
-#     Returns:
-#     --------
-#     data_all : array
-#         Concatenated data array
-#     ind_dict : dict
-#         Dictionary where keys are file paths and values are arrays where the first row are the indices in the data 
-#         matrix corresponding to the op_id_top op ids and the second row are the op id's corresponding to the first row.
-#     """
-#     is_first = True
-#     ind_dict = {}
-#     for file_path in file_paths:
-#         data,op = mIO.read_from_mat_file(file_path, ['TS_DataMat','Operations'],is_from_old_matlab = is_from_old_matlab)
-#         op_ids = op['id'] 
-#         ind = []
-#         op_id_of_ind = []
-#         # -- find the indices for the operations we want from op_id_top
-#         for i,op_id in enumerate(op_ids):
-#             if op_id in op_id_top:
-#                 ind.append(i)
-#                 op_id_of_ind.append(op_id)
-#         data = data[:,ind]
-#         # -- create a ind <-> op_id map for every .mat file
-#         ind_dict[file_path] = np.array([ind,op_id_of_ind])
-#         print ind_dict[file_path]
-#         if is_do_dict_only:
-#             data_all = None  
-#         else:
-#             hlp.ismember(op_id, op_id_top)
-#             if is_first == True:
-#                 data_all = data
-#                 is_first = False
-#             else:
-#                 data_all = np.vstack((data_all,data))
-#         
-#     return data_all,ind_dict
+def cat_data_from_matfile_root(mat_file_paths, count_op_id_min,is_from_old_matlab = False,
+                               data_all_good_op_path = './',op_id_good_path = './'):
+    """
+    Concatenate all data arrays for all HCTSA_loc.mat files located in mat_file_root. Only keep features that 
+    have been successfully calculated for count_op_id_min problems. Saves data_all and op_id_good to disk
+    Parameters:
+    -----------
+    mat_file_paths : list
+        List containing path to all relevant MAT files.
+    count_op_id_min : int
+        Number of problems for which each feature has to be calculated to be included
+    is_from_old_matlab : boolean
+        Are the MAT files from older version of the comp engine
+    data_all_good_op_path,op_id_good_path : string
+         Output paths for data_all and op_id_good respectively.
+        
+    Returns:
+    --------
+    data_all : ndarray, masked array
+        Array containing data from all problems, where each row contains the good features of one timeseries.
+    op_id_good : ndaray
+        Op id's of features that have been calculated in at least count_op_id_min problems.
+    """
+    # -- calculate in how many problems each operation has been successfully calculated
+    count_op_id = fq.count_op_calc(mat_file_paths,is_from_old_matlab = is_from_old_matlab)    
+    
+    # -- pick only features calculated in all problems
+    op_id_good = np.nonzero([count_op_id >= count_op_id_min])[1]
+     
+    # -- concatenate good features for all problems to one large feature matrix (can take a while and get big)
+    data_all = cat_data_op_subset(mat_file_paths,op_id_good,is_from_old_matlab = is_from_old_matlab)
 
+    # -- safe the calculated values
+    np.ma.dump(data_all, data_all_good_op_path)
+    np.save(op_id_good_path,op_id_good)
+    
+    return data_all,op_id_good
+ 
 def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
     """
     Concatenate the features where op_id is in op_id_top for all HCTSA_loc.m files pointed to by file_paths.
@@ -85,7 +70,7 @@ def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
     -----------
     file_paths : list
         list of file paths pointing to the files containing the data
-    op_id_top : list
+    op_id_top : list,ndarray
         list of operation ids wanted in the concatenated data array
     is_from_old_matlab : bool
         If the HCTSA_loc.mat files are saved from an older version of the comp engine. The order of entries is different.

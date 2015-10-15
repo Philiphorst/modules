@@ -80,7 +80,7 @@ def read_from_mat_file(mat_file_path,hctsa_struct_names,is_from_old_matlab = Fal
                 #ts_data = lambda i : mat_file['TimeSeries'][i][0][3]
                 for extractor,key in zip([ts_filename ,ts_kw,ts_n_samples],['filename','keywords','n_samples']):
                     timeseries[key] =[extractor(i) for i in range(mat_file['TimeSeries'].shape[1])]
-
+                    
             retval = retval + (timeseries,)
             
         if item == 'Operations':

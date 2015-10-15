@@ -19,12 +19,84 @@ import glob
 import re
 import os.path as op
 
-from scipy import stats
+import scipy.stats.mstats as stats
 import modules.misc.PK_matlab_IO as mIO
+
+def calculate_ustat_avg_mult_task(mat_file_paths,u_stat_file_paths,all_classes_avg_out_path = './',is_from_old_matlab = False):
+    
+    """
+    For multiple tasks calculate the u statistics for each task averaged over all possible label pairs.
+    The results are saved to disk.
+    Parameters:
+    -----------
+    mat_file_paths : list
+        List of file paths to the MAT files containing the HCTSA data.
+    u_stat_file_paths : list
+        File paths of the saved u statistics data in binary npy files.
+    all_classes_avg_out_path : string
+        Path to the output folder in which the tasks average u statistics are saved.
+    is_from_old_matlab : boolean
+        Are the MAT files from older version of the comp engine
+    Returns:
+    --------
+    all_classes_avg : ndarray
+        ndarray where each row represents a task and column i represents operation with op_id = i.
+    
+    """  
+   
+    # -- initialise the array containing the average u-statistic values for all problems and features
+    all_classes_avg = np.ones((len(u_stat_file_paths),10000))*np.NAN
+    
+    for i,(u_stat_file_path, mat_file_path) in enumerate(zip(u_stat_file_paths,mat_file_paths)):
+        
+        # -- load the u statistic for every operation and label pairing
+        u_stat = np.load(u_stat_file_path)
+
+        # -- calculate the scaling factor for every label pairing of the current classification problem
+        u_scale = u_stat_norm_factor(mat_file_path,is_from_old_matlab = is_from_old_matlab)
+
+        # -- calculate the average scaled u statistic over all label pairs in current problem 
+        u_stat_avg = (u_stat.T/u_scale).transpose().mean(axis=0)
+        
+        # -- save the average scaled u-statistic for all features to the all_classes_avg array. 
+        #    The column number corresponds with the operation id
+        op, = mIO.read_from_mat_file(mat_file_path,['Operations'],is_from_old_matlab = is_from_old_matlab )
+        all_classes_avg[i,op['id']] = u_stat_avg
+    
+    np.save(all_classes_avg_out_path,all_classes_avg)
+    return all_classes_avg 
+
+def calculate_ustat_mult_tasks(mat_file_paths,task_names,ustat_data_out_folder,is_from_old_matlab = False):
+    """
+    Calculate the u statistics for multiple tasks for all combination label pairs. Results are
+    saved to disk.
+    Parameters:
+    -----------
+    mat_file_paths : list
+        List of file paths to the MAT files containing the HCTSA data.
+    task_names : list
+        Names for each task to identify the saved npy files containing the u-stastistics data
+    ustat_data_out_folder : string
+        Output folder to which the results are saved
+    is_from_old_matlab : boolean
+        Are the MAT files from older version of the comp engine
+    Returns:
+    --------
+    u_stat_file_paths : list
+        File paths to the saved u statistics data saved as binary npy files.
+    """
+    u_stat_file_paths = []
+    for file_path,task_name in zip(mat_file_paths,task_names):
+        print 'Calculating U-statistics for {:s}.'.format(task_name)
+        ranks = u_stat_all_label_file_name(file_path, is_from_old_matlab = is_from_old_matlab )[0]
+        u_stat_file_paths.append(ustat_data_out_folder+task_name+'_ustat.npy')
+        np.save(u_stat_file_paths[-1],ranks)
+        
+    return u_stat_file_paths
 
 def filter_calculated(root_dir):
     """
-    Return all problems for which the u statistic values havent been previously
+    Return all problems for which the u statistic values haven't been previously
     calculated
     Parameters:
     -----------
@@ -40,7 +112,7 @@ def filter_calculated(root_dir):
     return list(set(dat_names) - set(calced_names))
 
 
-def get_calculated_names(root_dir):
+def get_calculated_names(root_dir,HCTSA_name_search_pattern = 'HCTSA_(.*)_N_70_100_reduced.mat'):
     """
     Return the names of of the problems with previously calculated u statistic 
     values and the names of the data matices (HCTSA_loc.mat format) in root_dir
@@ -48,6 +120,8 @@ def get_calculated_names(root_dir):
     -----------
     root_dir : string
         Directory containing files to be investigated
+    HCTSA_name_search_pattern : string
+        Search pattern for extraction of task names. Based on HCTSA file names.
     Returns:
     --------
     calced_names,dat_names : list of strings
@@ -61,8 +135,8 @@ def get_calculated_names(root_dir):
     for file_name in file_names:
         if re.search('.*_ustat\.npy',file_name) != None:
             calced_names.append(re.search('(.*)_ustat\.npy',file_name).group(1))
-        if re.search('HCTSA_.*_N_70_100_reduced.mat',file_name) != None:
-            dat_names.append(re.search('HCTSA_(.*)_N_70_100_reduced.mat',file_name).group(1)) 
+        if re.search(HCTSA_name_search_pattern,file_name) != None:
+            dat_names.append(re.search(HCTSA_name_search_pattern,file_name).group(1)) 
     return  calced_names,dat_names
         
 
@@ -140,10 +214,11 @@ def u_stat_all_label(ts,data,mask=None):
     # extract the unique labels
     # ---------------------------------------------------------------------
     print ts['keywords']
-    labels = [x.split(',')[-1][0] for x in ts['keywords']]
+    labels = [x.split(',')[0] for x in ts['keywords']]
+    #labels = [x.split(',')[-1][0] for x in ts['keywords']]
     labels_unique = list(set(labels))
     
-    labels = np.array(labels,dtype = np.dtype('S2'))
+    labels = np.array(labels,dtype = np.dtype('S64'))
     label_ind_list = []
     
     # ---------------------------------------------------------------------
@@ -165,7 +240,7 @@ def u_stat_all_label(ts,data,mask=None):
         data_1 = data[label_ind_list[label_ind_1],:]
         print i+1,'/',n_labels * (n_labels-1) / 2
         for k in range(0,data.shape[1]):
-            if np.array_equiv(np.concatenate((data_0[:,k],data_1[:,k])),data_0[0,k]):
+            if np.ma.all((data_0[:,k] == data_0[0,k])) and np.ma.all((data_1[:,k] == data_0[0,k] )):
                 ranks[i,k] = data_0[:,k].shape[0] * data_1[:,k].shape[0]/2.
             else:
                 ranks[i,k] = stats.mannwhitneyu(data_0[:,k], data_1[:,k])[0]
@@ -232,10 +307,10 @@ def u_stat_all_label_file_name(file_name,mask = None, is_from_old_matlab=False):
         # -- select the data for the current labels
         data_0 = data[label_ind_list[label_ind_0],:]
         data_1 = data[label_ind_list[label_ind_1],:]
-        print i,'/',n_labels * (n_labels-1) / 2
+        print i+1,'/',n_labels * (n_labels-1) / 2
         for k in range(0,data.shape[1]):
             # -- in the case of same value for every feature in both arrays set max possible value
-            if np.array_equiv(np.concatenate((data_0[:,k],data_1[:,k])),data_0[0,k]):
+            if np.ma.all((data_0[:,k] == data_0[0,k])) and np.ma.all((data_1[:,k] == data_0[0,k] )):
                 ranks[i,k] = data_0[:,k].shape[0] * data_1[:,k].shape[0]/2.
             else:
                 ranks[i,k] = stats.mannwhitneyu(data_0[:,k], data_1[:,k])[0]

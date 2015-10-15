@@ -52,14 +52,14 @@ def best_noncorr_op_ind(ind_dict,mask,file_path,op = None,is_from_old_matlab = F
     ind_top = ind[mask]
     return ind_top,op_id_top
 
-def count_op_calc(root_dir,is_from_old_matlab = False):
+def count_op_calc(mat_file_paths,is_from_old_matlab = False):
     """
     Counts how many times every operation has been calculated successfully for each problem
     represented by a HCTSA_loc.mat file in root_dir
     Parameters:
     ----------
-    root_dir : string
-        Directory containing the HCTSA_loc.mat files corresponding to the problems considered.   
+    mat_file_paths : list
+        Paths to the HCTSA_loc.mat files corresponding to the problems considered.   
     is_from_old_matlab : bool
         If the HCTSA_loc.mat files are saved from an older version of the comp engine. The order of entries is different.
     Returns:
@@ -68,20 +68,12 @@ def count_op_calc(root_dir,is_from_old_matlab = False):
         Array where each entry represents one operation and each value is the number of successful
         calculations of the corresponding operation for the given problems.
     """    
-    file_paths =  glob.glob(root_dir+'/*')
-    file_names = [osp.basename(file_path) for file_path in file_paths]
-    dat_names=[]
-    for file_name in file_names:
-        if re.search('HCTSA_.*_N_70_100_reduced.mat',file_name) != None:
-            dat_names.append(re.search('HCTSA_(.*)_N_70_100_reduced.mat',file_name).group(1)) 
 
-    mat_file_names = ["HCTSA_{0:s}_N_70_100_reduced.mat".format(s) for s in dat_names]
-    
     count_op_calc_all_problems = np.zeros(10000)
-    for mat_file_name in mat_file_names:
+    for mat_file_path in mat_file_paths:
         
-        op, = mIO.read_from_mat_file(root_dir+mat_file_name,['Operations'],is_from_old_matlab = is_from_old_matlab )
-        print mat_file_name
+        op, = mIO.read_from_mat_file(mat_file_path,['Operations'],is_from_old_matlab = is_from_old_matlab )
+        print "Counting which operations calculated in: {:s}".format(mat_file_path)
         
         count_op_calc_all_problems[op['id']]+=1
     return count_op_calc_all_problems
