@@ -15,8 +15,8 @@ California, 94041, USA.
 '''
 
 import numpy as np
-import misc.PK_matlab_IO as mIO
-import misc.PK_helper as hlp
+import modules.misc.PK_matlab_IO as mIO
+import modules.misc.PK_helper as hlp
 import scipy.spatial.distance as spdst
 import scipy.cluster.hierarchy as hierarchy
 
@@ -74,7 +74,7 @@ import scipy.cluster.hierarchy as hierarchy
 #         
 #     return data_all,ind_dict
 
-def cat_data_op_subset(file_paths,op_id_top,is_do_dict_only = False,is_from_old_matlab = False):
+def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
     """
     Concatenate the features where op_id is in op_id_top for all HCTSA_loc.m files pointed to by file_paths.
     Warning, this can take a while and the returned data matrix can be very large.
@@ -87,62 +87,52 @@ def cat_data_op_subset(file_paths,op_id_top,is_do_dict_only = False,is_from_old_
         list of file paths pointing to the files containing the data
     op_id_top : list
         list of operation ids wanted in the concatenated data array
-    is_do_dict_only : bool
-        True if only the ind_dict is calculated    
     is_from_old_matlab : bool
         If the HCTSA_loc.mat files are saved from an older version of the comp engine. The order of entries is different.
     Returns:
     --------
     data_all : array
         Concatenated data array
-    ind_dict : dict
-        Dictionary where keys are file paths and values are arrays where the first row are the indices in the data 
-        matrix corresponding to the op_id_top op ids and the second row are the op id's corresponding to the first row.
-    """
+   """
     is_first = True
-    ind_dict = {}
+    data_all = None
+
     for file_path in file_paths:
+        print "Adding data from {:s} \n to complete data matrix".format(file_path)
         data,op = mIO.read_from_mat_file(file_path, ['TS_DataMat','Operations'],is_from_old_matlab = is_from_old_matlab)
  
         # -- find the indices in the data for for op_id_top
-        ind = hlp.ismember(op_id_top, op['id'],is_return_masked_array = True,return_dtype = int)
-        
-        print ind
+        ind = hlp.ismember(op['id'],op_id_top,is_return_masked_array = True,return_dtype = int)
         # -- if any of the operations was not calculated for this problem
         # -- create a masked array and copy only valid data and mask 
         # -- invalid data
-        if np.any(ind.mask):
+        if ind.data != op_id_top:
+            # -- create an masked array filled with NaN. 
+            # -- This makes later masking of non-existent entries easier
             # -- each column of data_ma corresponds to the op_id in op_id_top with the
             # -- same index (column i in data_ma corresponds to op_id_top[i])
-            data_ma = np.ma.array(np.zeros((data.shape[0],ind.shape[0])))
-            print data_ma.shape
+
+            data_ma = np.ma.empty((data.shape[0],np.array(op_id_top).shape[0]))
+            data_ma[:] = np.NaN
             for it,i in enumerate(ind):
-                # -- if i is masked in ind and therefore the corresponding feature op_id_top[it] is
-                # --  not present in the current data, mask column in data_ma
-                if i is np.ma.masked:
-                    data_ma[:,it] = np.ma.masked
-                # -- if i is not masked in ind and therefore the corresponding feature op_id_top[it] is
-                # -- present in the current data in column i, copy the data
-                else:
-                    data_ma[:,it] = data[:,i]
+                # -- if i is masked in ind that means that the current operation in data
+                # -- is not part of op_id_top. We therefore do not need this operation to 
+                # -- be included in data_ma.
+                if i is not np.ma.masked:
+                    data_ma[:,i] = data[:,it]
         # -- otherwise pick all relevant features and also automatically sort them correctly (if necessary)
         else:
             data_ma = np.ma.array(data[:,ind])
         
-        # -- create a ind <-> op_id map for every .mat file
-        ind_dict[file_path] = np.ma.array([ind,op_id_top])
-        print ind_dict[file_path]
-        
-        if is_do_dict_only:
-            data_all = None  
+        # -- mask all NaN (not calculated) entries and stick them together
+        data_ma = np.ma.masked_invalid(data_ma)
+        if is_first == True:
+            data_all = data_ma
+            is_first = False
         else:
-            if is_first == True:
-                data_all = data_ma
-                is_first = False
-            else:
-                data_all = np.ma.vstack((data_all,data_ma))
+            data_all = np.ma.vstack((data_all,data_ma))
         
-    return data_all,ind_dict
+    return data_all
 
 def compute_clusters_from_dist(abs_corr_dist_arr = None,link_arr_path = None, 
                                link_arr = None, is_force_calc_link_arr = False,
@@ -242,7 +232,7 @@ def corelated_features_mask(data=None,abs_corr_array=None,calc_times=None,op_ids
     """
     
     if abs_corr_array == None:
-        abs_corr_array = np.abs(np.corrcoef(data, rowvar=0))  
+        abs_corr_array = np.abs(np.ma.corrcoef(data, rowvar=0))  
       
     # -- Vector containing 0 for all operations we don't want
     mask = np.ones(abs_corr_array.shape[0],dtype='bool') 
