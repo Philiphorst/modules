@@ -22,7 +22,8 @@ import scipy.spatial.distance as spdst
 import scipy.cluster.hierarchy as hierarchy
 
 def cat_data_from_matfile_root(mat_file_paths, count_op_id_min,is_from_old_matlab = False,
-                               data_all_good_op_path = './',op_id_good_path = './'):
+                               is_return_masked = True, data_all_good_op_path = './',
+                               op_id_good_path = './'):
     """
     Concatenate all data arrays for all HCTSA_loc.mat files located in mat_file_root. Only keep features that 
     have been successfully calculated for count_op_id_min problems. Saves data_all and op_id_good to disk
@@ -34,8 +35,12 @@ def cat_data_from_matfile_root(mat_file_paths, count_op_id_min,is_from_old_matla
         Number of problems for which each feature has to be calculated to be included
     is_from_old_matlab : boolean
         Are the MAT files from older version of the comp engine
+    is_return_masked : boolean
+        Saving large masked arrays to disk can lead to memory errors while pickling. If this is false funtion
+        returns a normal ndarray with unknown entires are set to NaN. This can be converted to a masked array with 
+        data_all = np.ma.masked_invalid(data_all)
     data_all_good_op_path,op_id_good_path : string
-         Output paths for data_all and op_id_good respectively.
+        Output paths for data_all and op_id_good respectively.
         
     Returns:
     --------
@@ -51,15 +56,19 @@ def cat_data_from_matfile_root(mat_file_paths, count_op_id_min,is_from_old_matla
     op_id_good = np.nonzero([count_op_id >= count_op_id_min])[1]
      
     # -- concatenate good features for all problems to one large feature matrix (can take a while and get big)
-    data_all = cat_data_op_subset(mat_file_paths,op_id_good,is_from_old_matlab = is_from_old_matlab)
+    data_all = cat_data_op_subset(mat_file_paths,op_id_good,is_from_old_matlab = is_from_old_matlab,is_return_masked = is_return_masked)
 
     # -- safe the calculated values
-    np.ma.dump(data_all, data_all_good_op_path)
+    if is_return_masked == True:
+        np.ma.dump(data_all, data_all_good_op_path)
+    else:
+        np.save(data_all_good_op_path,data_all)
+        
     np.save(op_id_good_path,op_id_good)
     
     return data_all,op_id_good
  
-def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
+def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False,is_return_masked = True):
     """
     Concatenate the features where op_id is in op_id_top for all HCTSA_loc.m files pointed to by file_paths.
     Warning, this can take a while and the returned data matrix can be very large.
@@ -74,9 +83,13 @@ def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
         list of operation ids wanted in the concatenated data array
     is_from_old_matlab : bool
         If the HCTSA_loc.mat files are saved from an older version of the comp engine. The order of entries is different.
+    is_return_masked : boolean
+        Saving large masked arrays to disk can lead to memory errors while pickling. If this is false funtion
+         returns a normal ndarray with unknown entires are set to NaN. This can be converted to a masked array with 
+         data_all = np.ma.masked_invalid(data_all)
     Returns:
     --------
-    data_all : array
+    data_all : ndarray/masked ndarray
         Concatenated data array
    """
     is_first = True
@@ -97,7 +110,7 @@ def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
             # -- each column of data_ma corresponds to the op_id in op_id_top with the
             # -- same index (column i in data_ma corresponds to op_id_top[i])
 
-            data_ma = np.ma.empty((data.shape[0],np.array(op_id_top).shape[0]))
+            data_ma = np.empty((data.shape[0],np.array(op_id_top).shape[0]))
             data_ma[:] = np.NaN
             for it,i in enumerate(ind):
                 # -- if i is masked in ind that means that the current operation in data
@@ -107,16 +120,18 @@ def cat_data_op_subset(file_paths,op_id_top,is_from_old_matlab = False):
                     data_ma[:,i] = data[:,it]
         # -- otherwise pick all relevant features and also automatically sort them correctly (if necessary)
         else:
-            data_ma = np.ma.array(data[:,ind])
+            data_ma = np.array(data[:,ind])
         
         # -- mask all NaN (not calculated) entries and stick them together
-        data_ma = np.ma.masked_invalid(data_ma)
+        #data_ma = np.ma.masked_invalid(data_ma)
         if is_first == True:
             data_all = data_ma
             is_first = False
         else:
-            data_all = np.ma.vstack((data_all,data_ma))
-        
+            data_all = np.vstack((data_all,data_ma))
+    # -- Saving a large masked array to disk can lead to Memory errors while using the pickle module.
+    if is_return_masked == True:
+        data_all = np.ma.masked_invalid(data_all)
     return data_all
 
 def compute_clusters_from_dist(abs_corr_dist_arr = None,link_arr_path = None, 
