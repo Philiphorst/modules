@@ -167,7 +167,7 @@ def compute_clusters_from_dist(abs_corr_dist_arr = None,link_arr_path = None,
     Returns:
     --------
     cluster_lst : list of lists 
-        list of lists of indices of the original abs_corr_dist_arr where every sublist describes a cluster
+        list of lists of indices of the abs_corr_dist_arr given as parameter where every sublist describes a cluster
     cluster_size_lst : list
         sizes of clusters contained in cluster_lst
      """
