@@ -107,4 +107,4 @@ def read_from_mat_file(mat_file_path,hctsa_struct_names,is_from_old_matlab = Fal
             retval = retval+(mat_file['TS_DataMat'],)
     return retval
 
-#print read_from_mat_file(mat_file_name,['Operations'], is_from_old_matlab = True)[0]['id']
+#print read_from_mat_file(mat_file_name,['Operations'])[0]['id']
