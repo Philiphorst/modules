@@ -16,38 +16,47 @@ import MySQLdb as mdb
 import numpy as np
 import numpy.ma as ma
 
-def read_from_mat_file(ts_lower_id, ts_upper_id):
+#Database information
+host = 'macomp00.ma.ic.ac.uk'
+user = 'jmm09'
+password = 'Upachdoom'
+database = 'jmm09_db'
+
+def read_from_sql(ts_ids):
     """
-    read hctsa data from mysql database to python data structures
-    assumes you want to import a continuous range of ts_ids 
+    read hctsa data from a mysql database to python data structures
 
     Parameters:
     ----------
-    ts_lower_id : int, the lower ts_id of your timeseries set
-    ts_upper_id : int, the upper ts_id of your timeseries set (non-inclusive)
-    
+    ts_ids : list, a list of the ts_ids you want to import 
+
     Returns:
     -------
     retval : tuple, tuple of the imported values in the order, timeseries,
     operations, TS_DataMat
 
     """
+
     retval = tuple()
-    con = mdb.connect('macomp00.ma.ic.ac.uk','jmm09','Upachdoom','jmm09_db')
+    con = mdb.connect(host,user,password,database)
 
     cur = con.cursor()
 
     timeseries = dict()
-    for databasekey, pythonkey in zip(['ts_id','Name','Keywords','Length'],['id','filename','keywords','n_samples']):
+    ts_ids = tuple(ts_ids)
+#Edit databasekey array to work with previous versions of the hctsa database
+    for databasekey, pythonkey in zip(['ts_id','Name','Keywords','Length'],
+                                      ['id','filename','keywords','n_samples']):
         cur.execute("SELECT {0} FROM TimeSeries ".format(databasekey) + 
-                " WHERE ts_id >= {0} AND ts_id < {1}".format(ts_lower_id,ts_upper_id) +
+                " WHERE ts_id IN {0}".format(ts_ids) +
                 " ORDER BY ts_id") 
         ret = np.squeeze(cur.fetchall())
         timeseries[pythonkey] = ret
     retval = retval + (timeseries,)
      
     operations = dict()
-    for databasekey,pythonkey in zip(['op_id','Name' ,'Keywords','Code','mop_id'],['id','name','keywords','code_string','master_id']):
+    for databasekey,pythonkey in zip(['op_id','Name' ,'Keywords','Code','mop_id'],
+                                     ['id','name','keywords','code_string','master_id']):
         cur.execute("SELECT {0} FROM Operations".format(databasekey) +
                     " ORDER BY op_id")
         ret = np.squeeze(cur.fetchall())
@@ -55,7 +64,7 @@ def read_from_mat_file(ts_lower_id, ts_upper_id):
     retval = retval + (operations,)
 
     datamat = []
-    for ts_id in range(ts_lower_id,ts_upper_id):
+    for ts_id in ts_ids:
         cur.execute("SELECT Output FROM Results" +
                     " WHERE ts_id = {0}".format(ts_id) +
                     " ORDER BY op_id ")
@@ -75,8 +84,35 @@ def read_from_mat_file(ts_lower_id, ts_upper_id):
         datamat.append(ma.masked_array(ret, mask=mask)) 
     datamat = ma.array(datamat)
     retval = retval + (datamat,)
+
+    con.close()
     
     return retval
 
+def read_from_sql_by_filename(filenamelike):
+    """
+    A wrapper of read_from_sql which accepts a regular expression
+    to specify type of name
+
+    Parameters
+    ----------
+    filenamelike: string, regular expression with wildcard % 
+    
+    Returns:
+    -------
+    tuple, tuple of the imported values in the order, timeseries,
+    operations, TS_DataMat
+    """
+    con = mdb.connect(host,user,password,database)
+
+    cur = con.cursor()
+    
+    cur.execute("SELECT ts_id FROM TimeSeries" +
+                " WHERE Name LIKE '{0}'".format(filenamelike))
+    
+    ret = np.squeeze(cur.fetchall())
+
+    return read_from_sql(ret)
+
 if __name__ == '__main__':
-    print read_from_mat_file(25367,25375)[2]
+    print read_from_sql_by_filename('Coffee_%')[2]
