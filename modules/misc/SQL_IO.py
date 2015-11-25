@@ -111,7 +111,8 @@ def read_from_sql_by_filename(filenamelike):
                 " WHERE Name LIKE '{0}'".format(filenamelike))
     
     ret = np.squeeze(cur.fetchall())
-
+    
+    con.close()
     return read_from_sql(ret)
 
 if __name__ == '__main__':
