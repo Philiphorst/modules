@@ -182,14 +182,16 @@ def u_stat_norm_factor(file_name,is_from_old_matlab = False):
 
 
 
-def u_stat_all_label(ts,data,mask=None):
+def u_stat_all_label(data, ts=None, labels=None, mask=None):
     """
     Calculate the U-statistic for all label pairings in a HCTSA_loc.mat file. The operations can be masked 
     by a boolean array.
     Parameters:
     -----------
-    ts : dict
+    ts : dict, optional (either labels or ts has to be given)
         'TimeSeries' dictionary from HCTSA_loc.mat file.
+    labels : ndarray, optional (either labels or ts has to be given)
+        An array containing the label for each timeseries (row) in data.
     data : ndarray
         data array where each row represents a timeseries and each column represents a feature
     mask : ndarray dtype='bool', optional
@@ -213,11 +215,16 @@ def u_stat_all_label(ts,data,mask=None):
     # ---------------------------------------------------------------------
     # extract the unique labels
     # ---------------------------------------------------------------------
-    print ts['keywords']
-    labels = [x.split(',')[0] for x in ts['keywords']]
-    #labels = [x.split(',')[-1][0] for x in ts['keywords']]
+    if labels == None:
+        # FIXME this is only in to secure compatibility to previous versions
+        if ts != None:
+            labels = [x.split(',')[0] for x in ts['keywords']]
+        else:
+            # FIXME some error handling would be good
+            exit()
+
     labels_unique = list(set(labels))
-    
+    # FIXME Not sure if this is necessary or why it is there in the first place
     labels = np.array(labels,dtype = np.dtype('S64'))
     label_ind_list = []
     
@@ -232,20 +239,21 @@ def u_stat_all_label(ts,data,mask=None):
     # calculate Mann-Whitney u-test
     # ---------------------------------------------------------------------
     ranks = np.zeros((n_labels * (n_labels-1) / 2,data.shape[1]))
-    
+    norm = np.zeros(n_labels * (n_labels-1) / 2)
+
     for i,(label_ind_0,label_ind_1) in enumerate(itertools.combinations(range(n_labels),2)):
         data_0 = data[label_ind_list[label_ind_0],:]
-        #print label_ind_list[label_ind_0]
-        #print data_0
         data_1 = data[label_ind_list[label_ind_1],:]
-        print i+1,'/',n_labels * (n_labels-1) / 2
+
+        print "calculating label pair {:d} / {:d}".format(i+1,n_labels * (n_labels-1) / 2)
         for k in range(0,data.shape[1]):
             if np.ma.all((data_0[:,k] == data_0[0,k])) and np.ma.all((data_1[:,k] == data_0[0,k] )):
                 ranks[i,k] = data_0[:,k].shape[0] * data_1[:,k].shape[0]/2.
             else:
                 ranks[i,k] = stats.mannwhitneyu(data_0[:,k], data_1[:,k])[0]
-
-    return ranks,labels_unique,label_ind_list
+            # -- Calculate the norm factor for every label pair
+            norm[i] = data_0.shape[0] *  data_1.shape[0]   
+    return ranks, norm, labels_unique, label_ind_list
  
 def u_stat_all_label_file_name(file_name,mask = None, is_from_old_matlab=False):
     """
