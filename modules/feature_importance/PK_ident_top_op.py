@@ -67,7 +67,9 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
     elif norm == 'mean-norm':
         all_classes_avg_good_mean = np.ma.masked_invalid(np.ma.mean(all_classes_avg_good,axis = 1))
         all_classes_avg_good_norm = (all_classes_avg_good.T / all_classes_avg_good_mean).T   
-        
+    else:
+        all_classes_avg_good_norm =  all_classes_avg_good
+         
     sort_ind = np.argsort(all_classes_avg_good_norm.mean(axis=0))
     acag_n_sort_red = all_classes_avg_good[:,sort_ind[:max_feat]] 
     
