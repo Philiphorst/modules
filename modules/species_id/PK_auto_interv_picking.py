@@ -20,11 +20,11 @@ import matplotlib.pyplot as plt
 
 
 import modules.misc.PK_stft as stft
-import species_id.PK_train_interv_picking as intvpck
-import species_id.PK_picking_helper as pckhlp
+import modules.species_id.PK_train_interv_picking as intvpck
+import modules.species_id.PK_picking_helper as pckhlp
 
 
-def calc_pattern_correlation_chunked(data,pattern,fs,freq_fft_bins ,chunk_len_s = 60,
+def calc_pattern_correlation_chunked(data,pattern,fs,freq_fft_bins ,chunk_len_s = 45,
                                         len_fft = 1024, nr_ffts_per_s = 100, pattern_len_s = 2):
     """
     Calculate the average correlation between the stft of a timeseries and a pattern over a certain 
@@ -59,11 +59,13 @@ def calc_pattern_correlation_chunked(data,pattern,fs,freq_fft_bins ,chunk_len_s 
     n_frames_chunk,_,_,sec_per_sample,overlap = stft.calc_nr_frames(chunk_len_s,fs,len_fft,chunk_len_s*nr_ffts_per_s)
     # -- By giving the overlap, the length of the pattern is not necessarily pattern_len_s*nr_ffts_per_s anymore
     pattern = stft.calc_stft(pattern,0,pattern.shape[0], fs, pattern_len_s*nr_ffts_per_s,overlap=overlap)[0]
+    # -- z-score the pattern
     pattern = (pattern-np.mean(pattern)) / np.std(pattern)
+    #q75, q50, q25 = np.percentile(pattern, [75 ,50, 25])
+    #iqr = q75 - q25
+    #pattern  = 1/(1+np.exp(-(pattern -q50)/(iqr/1.35)))
+    
 #     plt.matshow(pattern, origin='lower')
-#     plt.matshow(pattern[[62,63,64,65,66,67,68,69,70,71,72,73,74]], origin='lower')
-#     print freq_fft_bins
-#     plt.show()
 #     exit()
     end_frame = 0
     start_frame = 0
@@ -87,6 +89,7 @@ def calc_pattern_correlation_chunked(data,pattern,fs,freq_fft_bins ,chunk_len_s 
             peaks = tmp
         else:
             peaks = np.hstack((peaks,tmp))
+    
     return peaks
 
 
@@ -161,7 +164,9 @@ def correlation_picking(source_file_path,pattern,freq_range_fft_bins,len_fft = 1
         The array of the correlation between source and pattern. The samplerate is not identical with the sample
         rate of the input file but depends on nr_ffts_per_s given to calc_pattern_correlation_chunked
     """
+    # -- read audio data
     fs ,data = spwave.read(source_file_path)
+    # -- z-score data
     data = (data-np.mean(data))/np.std(data)
     peaks = calc_pattern_correlation_chunked(data,pattern,fs,
                             freq_range_fft_bins,len_fft=len_fft, 
