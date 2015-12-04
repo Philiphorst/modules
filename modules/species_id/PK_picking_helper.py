@@ -73,7 +73,7 @@ def save_feat_in_pdf(X,reshape_tuple,pdf_path,plot_titles_list = []):
             if pos_it == 0:
                 fig = plt.figure(figsize=(10,14))
             ax = fig.add_subplot(4,3,pos_it+1)
-            ax.imshow(sample.reshape(reshape_tuple)[range(20,40)],origin='lower',aspect=4.)
+            ax.imshow(sample.reshape(reshape_tuple)[range(20,60)],origin='lower',aspect=4.)
             if is_ext_titles:
                 ax.set_title(plot_titles_list[i],fontsize = 10)
             else:
