@@ -42,6 +42,8 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
     Calculate the correlation matrix of the performance for top features. If norm != None it uses a normed
     version of the all_classes_avg_good array for estimating the best features. It uses the non-normed originla
     version of the array to calculate the correlation array, though.
+    XXX There is an issue if too many entries in all_classes_avg_good are masked which can result in correlation
+    coeffitients larger than one in their absolute value.
     Parameters:
     -----------
     all_classes_avg_good : masked ndarray
@@ -61,20 +63,25 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
         Array similar to all_classes_avg_good but normed by 'norm'.
     """
       
-    if norm == 'z-score':
+    if norm in ['z-score','zscore'] :
         all_classes_avg_good = np.ma.masked_invalid(all_classes_avg_good)
         all_classes_avg_good_norm = ((all_classes_avg_good.T - np.ma.mean(all_classes_avg_good,axis=1)) / np.ma.std(all_classes_avg_good,axis=1)).T
     elif norm == 'mean-norm':
         all_classes_avg_good_mean = np.ma.masked_invalid(np.ma.mean(all_classes_avg_good,axis = 1))
         all_classes_avg_good_norm = (all_classes_avg_good.T / all_classes_avg_good_mean).T   
     else:
+        all_classes_avg_good = np.ma.masked_invalid(all_classes_avg_good)
         all_classes_avg_good_norm =  all_classes_avg_good
-         
-    sort_ind = np.argsort(all_classes_avg_good_norm.mean(axis=0))
+        
+    #all_classes_avg_good_norm = np.ma.masked_invalid(all_classes_avg_good_norm)
+    sort_ind = np.ma.argsort(all_classes_avg_good_norm.mean(axis=0))
     acag_n_sort_red = all_classes_avg_good[:,sort_ind[:max_feat]] 
-    
+    #print acag_n_sort_red
     # -- calculate the correlation
-    abs_corr_array = np.abs(np.ma.corrcoef(acag_n_sort_red, rowvar=0))      
+    abs_corr_array = np.abs(np.ma.corrcoef(acag_n_sort_red, rowvar=0)) 
+    if np.ma.max(abs_corr_array ) > 1:
+        raise ValueError('Too many masked values in "all_classes_avg_good". \n np.ma.corrcoeff() returned invalid values')   
+    
     return abs_corr_array,sort_ind,all_classes_avg_good_norm
 
 
