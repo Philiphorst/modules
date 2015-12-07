@@ -325,7 +325,43 @@ def normalise_array(data,axis,norm_type = 'zscore'):
         data = ( data - mean ) / std
         return data,mean,std
     
+def normalise_masked_array(data,axis,norm_type = 'zscore'):
+    """
+    normalise the masked array along the axis.
+    Parameters:
+    -----------
+    data : ndarray/masked array
+        The array containing the data to be normalised
+    axis : int
+        The axis along which data is normalised
+    norm_type : string
+        Type of normalisation. Can be 'zscore','sigmoid'
+    Returns:
+    --------
+    data : ndarray
+        The normalised data array
+    [parameters] : float
+        The parameters calculated for the normalisation. Depending on norm_type
+    """
+    if norm_type == 'sigmoid_mean_std':
+        # sigmoidal transform over learning samples
+        # enable broadcasting for both cases of axis       
+        mean = np.ma.expand_dims(np.ma.mean(data, axis=axis),axis=axis)
+        std = np.ma.expand_dims(np.ma.std(data, axis=axis),axis=axis)
+
+        data = 1/(1+np.exp(-(data-mean)/(std)))
+        return (data*2.)-1,mean,std
     
+   
+    elif norm_type == 'zscore':
+        # enable broadcasting for both cases of axis
+        mean = np.ma.expand_dims(np.ma.mean(data, axis=axis),axis=axis)
+        std = np.ma.expand_dims(np.ma.std(data, axis=axis),axis=axis)
+        #print "mean.shape",mean.shape,"std.shape",std.shape
+        # zscore over all features 
+        data = ( data - mean ) / std
+
+        return data,mean,std
     
     
     

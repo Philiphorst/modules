@@ -62,7 +62,6 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
     all_classes_avg_good_norm : masked ndarray
         Array similar to all_classes_avg_good but normed by 'norm'.
     """
-      
     if norm in ['z-score','zscore'] :
         all_classes_avg_good = np.ma.masked_invalid(all_classes_avg_good)
         all_classes_avg_good_norm = ((all_classes_avg_good.T - np.ma.mean(all_classes_avg_good,axis=1)) / np.ma.std(all_classes_avg_good,axis=1)).T
@@ -76,7 +75,6 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
     #all_classes_avg_good_norm = np.ma.masked_invalid(all_classes_avg_good_norm)
     sort_ind = np.ma.argsort(all_classes_avg_good_norm.mean(axis=0))
     acag_n_sort_red = all_classes_avg_good[:,sort_ind[:max_feat]] 
-    #print acag_n_sort_red
     # -- calculate the correlation
     abs_corr_array = np.abs(np.ma.corrcoef(acag_n_sort_red, rowvar=0)) 
     if np.ma.max(abs_corr_array ) > 1:
