@@ -120,7 +120,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     axmeasure2 = axmeasure.twinx()
     axmeasure2.plot(np.arange(0,measures.shape[-1])+0.5,measures[1,index],color='r')
     axmeasure2.set_xlim([0,measures.shape[-1]])
-    #fig.savefig('/home/philip/work/reports/feature_importance/data/correlation_plots/problem_space/dendr_{:d}_Norm.png'.format(len(index)))
+
     [label.set_color('r') for label in axmeasure2.get_yticklabels()]
     axmeasure2.set_ylabel('z-scored avg u-stat')
     axmeasure2.yaxis.label.set_color('r')
@@ -151,7 +151,6 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     for (i,j) in zip(cluster_bounds[:-1],cluster_bounds[1:]):
         measures_dendr = measures[1,index]
         best_features_marker.append(i+np.argmin(measures_dendr[i:j]))
-        print np.argmin(measures_dendr[i:j]),measures_dendr[i:j]
         
     axmatrix.scatter(best_features_marker,best_features_marker,color='w') 
     axmatrix.set_xlim([-0.5,abs_corr_array.shape[0]-0.5])
