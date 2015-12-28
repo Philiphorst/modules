@@ -76,6 +76,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     """
  
     figsize=(18,12)    
+    #figsize=(46.81,33.11) 
     rect_measures = [0.25,0.8075,0.5,0.15]
     rect_dendro = [0.755,0.05,0.15,0.75]
     rect_matrix = [0.25,0.05,0.5,0.75]
@@ -102,6 +103,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
       
     axmatrix.set_xticks([])
     axmatrix.set_yticks(range(len(index)))
+    #axmatrix.set_yticklabels(np.array(names)[index],fontsize=5)
     axmatrix.set_yticklabels(np.array(names)[index])
 
     # Plot colorbar.
@@ -111,7 +113,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     
     # Plot the quality measures
     axmeasure = fig.add_axes(rect_measures)
-    axmeasure.xaxis.set_ticklabels([])
+    axmeasure.xaxis.set_ticklabels([]) 
     axmeasure.scatter(np.arange(0,measures.shape[-1])+0.5,measures[0,index])
     axmeasure.set_xlim([0,measures.shape[-1]])
     axmeasure.set_ylabel('problems calculated')
