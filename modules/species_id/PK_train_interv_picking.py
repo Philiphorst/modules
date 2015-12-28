@@ -142,7 +142,8 @@ def training_interval_times(interval_range_dict,nr_intervals_per_label,interval_
     return interval_dict
 
 def train_interval_mel_features(interval_dict,pattern = '{:s}',nr_fft = 100, 
-                                len_fft = 1024, nr_mel_bins = 100, min_freq_wanted = 200, max_freq_wanted = 8000):
+                                len_fft = 1024, nr_mel_bins = 100, min_freq_wanted = 200, max_freq_wanted = 8000,
+                                is_return_fit = False):
     """
     Calculate the mel spectrogram features for each interval in the interval_dict and return a feature matrix X
     of ndim = [nr_intervals,nr_features] 
@@ -171,20 +172,27 @@ def train_interval_mel_features(interval_dict,pattern = '{:s}',nr_fft = 100,
     # -- The total number of intervals in the dictionary 
     nr_intervals = np.array([len(interval_dict[file_key]) for file_key in interval_dict]).sum()
     X = np.zeros((nr_intervals,nr_mel_bins*nr_fft))
+    t = np.zeros((nr_intervals,2))
     i=0
+    file_interval_tuple = ()
     for file_key in interval_dict:
         file_name = pattern.format(file_key)
         print file_name
         fs,data = spwav.read(file_name)
         data=data-np.mean(data)
         for time_interval in interval_dict[file_key]:
-            print i
+
+            file_interval_tuple = file_interval_tuple+(file_key,time_interval)
             sf = int(time_interval[0]*fs)
             ef = int(time_interval[1]*fs)
             spectrum = stft.calc_stft(data[sf:ef],fs = fs, nr_fft = nr_fft, len_fft = len_fft)[0]
             X[i,:] = mel.stft_to_mel_freq(spectrum,fs=fs,len_fft=1024,nr_mel_bins = nr_mel_bins, 
                                              min_freq_wanted = min_freq_wanted , max_freq_wanted= max_freq_wanted)[0].flatten()  
-            i+=1
+            t[i] = time_interval
+            i+=1 
+    if is_return_fit:
+        return X,file_interval_tuple
+    
     return X
 
 def write_range_dict_to_txt(range_dict, out_file_path):
