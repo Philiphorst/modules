@@ -76,8 +76,8 @@ def calc_perform_corr_mat(all_classes_avg_good,norm = None, max_feat = 200):
     sort_ind = np.ma.argsort(all_classes_avg_good_norm.mean(axis=0))
     acag_n_sort_red = all_classes_avg_good[:,sort_ind[:max_feat]] 
     # -- calculate the correlation
-    abs_corr_array = np.abs(np.ma.corrcoef(acag_n_sort_red, rowvar=0)) 
-    if np.ma.max(abs_corr_array ) > 1:
+    abs_corr_array = np.abs(np.ma.corrcoef(acag_n_sort_red, rowvar=0))
+    if np.ma.max(abs_corr_array ) > 1.1:
         raise ValueError('Too many masked values in "all_classes_avg_good". \n np.ma.corrcoeff() returned invalid values')   
     
     return abs_corr_array,sort_ind,all_classes_avg_good_norm
