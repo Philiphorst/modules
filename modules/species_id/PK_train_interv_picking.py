@@ -182,11 +182,11 @@ def train_interval_mel_features(interval_dict,pattern = '{:s}',nr_fft = 100,
         data=data-np.mean(data)
         for time_interval in interval_dict[file_key]:
 
-            file_interval_tuple = file_interval_tuple+(file_key,time_interval)
+            file_interval_tuple = file_interval_tuple+((file_key,time_interval),)
             sf = int(time_interval[0]*fs)
             ef = int(time_interval[1]*fs)
             spectrum = stft.calc_stft(data[sf:ef],fs = fs, nr_fft = nr_fft, len_fft = len_fft)[0]
-            X[i,:] = mel.stft_to_mel_freq(spectrum,fs=fs,len_fft=1024,nr_mel_bins = nr_mel_bins, 
+            X[i,:] = mel.stft_to_mel_freq(spectrum,fs=fs,len_fft=len_fft,nr_mel_bins = nr_mel_bins, 
                                              min_freq_wanted = min_freq_wanted , max_freq_wanted= max_freq_wanted)[0].flatten()  
             t[i] = time_interval
             i+=1 
