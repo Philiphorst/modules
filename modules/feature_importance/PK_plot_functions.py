@@ -56,7 +56,7 @@ def plot_arr_dendrogram_bak(abs_corr_array,names):
 
     return index
 
-def plot_arr_dendrogram(abs_corr_array,names,measures = None):
+def plot_arr_dendrogram(abs_corr_array,names,max_dist_cluster,measures = None):
     """
     Compute  dendrogram and create a plot plotting dendrogram and abs_corr_array
     Parameters:
@@ -66,7 +66,9 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     names : list 
         list of strings containing the names of the operations in abs_corr_array in the
         corresponding order.
-    measured : ndarray (n_measures x abs_corr_array.shape[0])
+    max_dist_cluster : float
+        Maximum distance in the clusters
+    measures : ndarray (n_measures x abs_corr_array.shape[0])
         Array containing measures to be plotted on top of the matrix. Positions corresponding positions
         of operations in abs_corr_array.
     Returns:
@@ -91,7 +93,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     corr_dendrogram = hierarchy.dendrogram(corr_linkage, orientation='left')
     #axdendro.set_xticks([])
     axdendro.set_yticks([])
-    axdendro.axvline(0.2,ls='--',c='k')
+    axdendro.axvline(max_dist_cluster,ls='--',c='k')
     # Plot distance matrix.
     axmatrix = fig.add_axes(rect_matrix)
     index = corr_dendrogram['leaves']
@@ -131,7 +133,7 @@ def plot_arr_dendrogram(abs_corr_array,names,measures = None):
     # -- calculate and plot clusters ----------------------------------
     # -----------------------------------------------------------------
     #cluster_ind = hierarchy.fcluster(link_arr, t=cluster_t, criterion=cluster_criterion)
-    cluster_ind = hierarchy.fcluster(corr_linkage, t = 0.2, criterion='distance')
+    cluster_ind = hierarchy.fcluster(corr_linkage, t = max_dist_cluster, criterion='distance')
                                      
     # -- plot delimiters for measures
     cluster_bounds = np.hstack((-1,np.nonzero(np.diff(cluster_ind[index]))[0],abs_corr_array.shape[0]-1))+1
